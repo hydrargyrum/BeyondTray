@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -73,32 +74,51 @@ def parse_menu(text):
 def set_menu(reason):
     global menu
 
-    #if reason != QSystemTrayIcon.Context:
-    #	return
+    if args.command:
+        menu_description = subprocess.check_output(args.other, encoding="utf-8")
+    else:
+        with open(args.other[0]) as fp:
+            menu_description = fp.read()
 
-    menu_description = subprocess.check_output(sys.argv[1:], encoding="utf-8")
     menu = parse_menu(menu_description)
 
-    #menu = QMenu()
-    #menu.addAction("lol")
     menu.addAction("Quit").triggered.connect(app.exit)
 
     tray.setContextMenu(menu)
     menu.show()
 
 
-app = QApplication(sys.argv)
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
 
-QIcon.setThemeSearchPaths(
-    f"{data_dir}/icons"
-    for data_dir in "/usr/local/share/:/usr/share/".split(":")
-)
-tray = QSystemTrayIcon(QIcon.fromTheme("mail-forward"))
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--icon", default="mail-forward")
+    argparser.add_argument("--title", default="Command Tray")
+    argparser.add_argument("--command", action="store_true")
+    argparser.add_argument("other", nargs="+")
+    args = argparser.parse_args(app.arguments()[1:])
 
-tray.activated.connect(set_menu)
+    if not args.command and len(args.other) > 1:
+        argparser.error("only 1 file should be given")
 
-menu = QMenu()
-tray.setContextMenu(menu)
+    xdg_path = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    QIcon.setThemeSearchPaths(
+        f"{data_dir}/icons"
+        for data_dir in xdg_path.split(":")
+    )
+    icon = QIcon.fromTheme(args.icon)
+    if icon.isNull():
+        icon = QIcon(args.icon)
 
-tray.show()
-app.exec()
+    app.setWindowIcon(icon)
+    app.setApplicationDisplayName(args.title)
+
+    tray = QSystemTrayIcon(icon)
+    tray.setToolTip(args.title)
+    tray.activated.connect(set_menu)
+
+    menu = QMenu()
+    tray.setContextMenu(menu)
+
+    tray.show()
+    app.exec()
