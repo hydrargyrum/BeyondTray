@@ -14,64 +14,65 @@ def exec_action(action):
     subprocess.run(action.data(), shell=True)
 
 
-def parse_separator(menu, _):
-    menu.addSeparator()
+class MenuDescriptionParser:
+    text_entry_regex = re.compile(r"- (?:\[(?P<checkbox> |x)\] )?(?P<title>.*)")
+    command_regex = re.compile(r"\s+(?P<command>.+)")
+    separator_regex = re.compile(r"---+(?:\s+(?P<section>.+))?")
 
+    def __init__(self, menu):
+        self.menu = menu
+        self.current_action = None
 
-def parse_section(menu, match):
-    menu.addSection(match[1])
+    def parse(self, text):
+        lines = text.strip().split("\n")
+        self.parse_entry(lines)
 
+    def parse_entry(self, lines):
+        if not lines:
+            return
 
-def parse_disabled(menu, match):
-    action = menu.addAction(match[1])
-    action.setEnabled(False)
+        line, *lines = lines
 
+        m = self.text_entry_regex.fullmatch(line)
+        if m:
+            self.current_action = self.menu.addAction(m["title"])
 
-def parse_cmd(menu, match):
-    action = menu.addAction(match[1])
-    action.setData(match[2])
-    action.triggered.connect(lambda _, action=action: exec_action(action))
+            self.current_action.triggered.connect(
+                lambda _, action=self.current_action: exec_action(action)
+            )
 
+            if m["checkbox"]:
+                self.current_action.setCheckable(True)
+                if m["checkbox"] == "x":
+                    self.current_action.setChecked(True)
 
-def parse_checkbox(menu, match, disabled=False):
-    action = menu.addAction(match[2])
-    if disabled:
-        action.setEnabled(False)
-    else:
-        action.setData(match[3])
-    action.setCheckable(True)
-    action.setChecked(match[1] == "x")
-    action.triggered.connect(lambda _, action=action: exec_action(action))
+            return self.parse_cmd_or_entry(lines)
 
+        m = self.separator_regex.fullmatch(line)
+        if m:
+            self.current_action = None
+            if m["section"]:
+                self.menu.addSection(m["section"])
+            else:
+                self.menu.addSeparator()
 
-def parse_disabled_checkbox(menu, match):
-    parse_checkbox(menu, match, disabled=True)
+            return self.parse_entry(lines)
 
+        raise ValueError(f"unexpected input {line!r}")
 
-desc_parsing = {
-    re.compile("---+"): parse_separator,
-    re.compile("---+ (.*)"): parse_section,
-    re.compile(r"\[( |x)\] (.*)\t(.*)"): parse_checkbox,
-    re.compile(r"\[( |x)\] (.*)"): parse_disabled_checkbox,
-    re.compile(r"(.*)\t(.*)"): parse_cmd,
-    re.compile(r"(.*)"): parse_disabled,
-}
+    def parse_cmd_or_entry(self, lines):
+        if not lines:
+            return
 
+        m = self.command_regex.fullmatch(lines[0])
+        if m:
+            assert self.current_action is not None
+            self.current_action.setData(m["command"])
+            return self.parse_entry(lines[1:])
 
-def parse_menu(text):
-    res = QMenu()
-    lines = text.strip().split("\n")
-
-    for line in lines:
-        if not line:
-            continue
-
-        for regex, converter in desc_parsing.items():
-            m = regex.fullmatch(line)
-            if m:
-                converter(res, m)
-                break
-    return res
+        if self.current_action:
+            self.current_action.setEnabled(False)
+        self.parse_entry(lines)
 
 
 def set_menu(reason):
@@ -83,7 +84,8 @@ def set_menu(reason):
         with open(args.other[0]) as fp:
             menu_description = fp.read()
 
-    menu = parse_menu(menu_description)
+    menu = QMenu()
+    MenuDescriptionParser(menu).parse(menu_description)
 
     menu.addAction("Quit").triggered.connect(app.exit)
 
