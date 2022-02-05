@@ -63,6 +63,9 @@ def parse_menu(text):
     lines = text.strip().split("\n")
 
     for line in lines:
+        if not line:
+            continue
+
         for regex, converter in desc_parsing.items():
             m = regex.fullmatch(line)
             if m:
