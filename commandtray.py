@@ -206,6 +206,8 @@ def set_menu(reason):
     menu = QMenu()
     MenuDescriptionParser(menu).parse(menu_description)
 
+    if not menu.isEmpty():
+        menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.exit)
 
     tray.setContextMenu(menu)
