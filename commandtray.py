@@ -203,7 +203,7 @@ def set_menu(reason):
         with open(args.other[0]) as fp:
             menu_description = fp.read()
 
-    menu = QMenu()
+    menu.clear()
     MenuDescriptionParser(menu).parse(menu_description)
 
     if not menu.isEmpty():
