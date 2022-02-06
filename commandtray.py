@@ -18,6 +18,7 @@ class MenuDescriptionParser:
     text_entry_regex = re.compile(r"- (?:\[(?P<checkbox> |x)\] )?(?P<title>.*)")
     command_regex = re.compile(r"\s+(?P<command>.+)")
     separator_regex = re.compile(r"---+(?:\s+(?P<section>.+))?")
+    icon_regex = re.compile(r"\s+icon: (\S+)")
 
     def __init__(self, menu):
         self.menu = menu
@@ -64,11 +65,17 @@ class MenuDescriptionParser:
         if not lines:
             return
 
+        m = self.icon_regex.fullmatch(lines[0])
+        if m:
+            assert self.current_action is not None
+            self.current_action.setIcon(load_icon(m[1]))
+            return self.parse_cmd_or_entry(lines[1:])
+
         m = self.command_regex.fullmatch(lines[0])
         if m:
             assert self.current_action is not None
             self.current_action.setData(m["command"])
-            return self.parse_entry(lines[1:])
+            return self.parse_cmd_or_entry(lines[1:])
 
         if self.current_action:
             self.current_action.setEnabled(False)
@@ -93,6 +100,13 @@ def set_menu(reason):
     menu.show()
 
 
+def load_icon(name):
+    icon = QIcon.fromTheme(name)
+    if icon.isNull():
+        icon = QIcon(name)
+    return icon
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
@@ -111,9 +125,7 @@ if __name__ == "__main__":
         f"{data_dir}/icons"
         for data_dir in xdg_path.split(":")
     )
-    icon = QIcon.fromTheme(args.icon)
-    if icon.isNull():
-        icon = QIcon(args.icon)
+    icon = load_icon(args.icon)
 
     app.setWindowIcon(icon)
     app.setApplicationDisplayName(args.title)
