@@ -14,72 +14,184 @@ def exec_action(action):
     subprocess.run(action.data(), shell=True)
 
 
+ws_regex = re.compile(r"\s+")
+
+
 class MenuDescriptionParser:
     text_entry_regex = re.compile(r"- (?:\[(?P<checkbox> |x)\] )?(?P<title>.*)")
-    command_regex = re.compile(r"\s+(?P<command>.+)")
+    command_regex = re.compile(r"(?P<command>.+)")
     separator_regex = re.compile(r"---+(?:\s+(?P<section>.+))?")
-    icon_regex = re.compile(r"\s+icon: (\S+)")
+    icon_regex = re.compile(r"icon: (?P<icon>\S+)")
+    checked_regex = re.compile(r"\s+checked: (yes|no|true|false|1|0)")
+    submenu_regex = re.compile(r"> (?P<title>.+)")
+
+    automata = {
+        "start": {
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+        },
+
+        "entry": {
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+            icon_regex: "text_attrs",
+            command_regex: "text_attrs",
+        },
+        "text_attrs": {
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+            icon_regex: "text_attrs",
+            command_regex: "text_attrs",
+        },
+
+        "submenu": {
+            icon_regex: "submenu_attrs",
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+        },
+        "submenu_attrs": {
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+        },
+
+        "separator": {
+            text_entry_regex: "entry",
+            separator_regex: "separator",
+            submenu_regex: "submenu",
+        },
+    }
 
     def __init__(self, menu):
-        self.menu = menu
+        self.menu_tree = [menu]
         self.current_action = None
+        self.indent_width = 1
+
+    def _get_indent(self, line):
+        space_match = ws_regex.match(line)
+        if space_match:
+            return len(space_match[0])
+        return 0
 
     def parse(self, text):
+        first_indent_match = re.search(r"^[ \t]+", text, flags=re.MULTILINE)
+        if first_indent_match:
+            self.indent_width = len(first_indent_match[0])
+
         lines = text.strip().split("\n")
-        self.parse_entry(lines)
 
-    def parse_entry(self, lines):
-        if not lines:
+        state = "start"
+        for line in lines:
+            if not line.strip():
+                continue
+
+            indent = self._get_indent(line)
+            if indent and indent % self.indent_width != 0:
+                raise SyntaxError(f"indentation should be a multiple of {self.indent_width}")
+            level = indent // self.indent_width
+
+            line = line.strip()
+
+            for regex, new_state in self.automata[state].items():
+                m = regex.fullmatch(line)
+                if m:
+                    state = new_state
+                    getattr(self, f"parse_{state}")(m, level)
+                    break
+
+    def _process_indent(self, indent):
+        try:
+            pos = self.indents.index(indent)
+        except ValueError:
+            raise SyntaxError("not properly indented")
+
+        if pos == len(self.indents) - 1:
             return
+        else:
+            del self.indents[pos + 1:]
+            del self.menu_tree[pos + 1:]
 
-        line, *lines = lines
+    def _check_attr_indent(self, level):
+        if level != len(self.menu_tree):
+            raise SyntaxError("not indented properly")
 
-        m = self.text_entry_regex.fullmatch(line)
-        if m:
-            self.current_action = self.menu.addAction(m["title"])
+    def _process_indent(self, level):
+        # len([root]) = 1
+        # indent("- foo") = 0
+        # -> nothing to do
 
-            self.current_action.triggered.connect(
-                lambda _, action=self.current_action: exec_action(action)
-            )
+        # len([root, menu]) = 2
+        # indent("- foo") = 0
+        # -> drop `menu`
 
-            if m["checkbox"]:
-                self.current_action.setCheckable(True)
-                if m["checkbox"] == "x":
-                    self.current_action.setChecked(True)
+        # len([root, menu]) = 2
+        # indent(" - foo") = 1
+        # -> nothing to do
 
-            return self.parse_cmd_or_entry(lines)
-
-        m = self.separator_regex.fullmatch(line)
-        if m:
+        level += 1
+        max_depth = len(self.menu_tree)
+        if level > max_depth:
+            raise SyntaxError("too big indent")
+        elif level < max_depth:
             self.current_action = None
-            if m["section"]:
-                self.menu.addSection(m["section"])
-            else:
-                self.menu.addSeparator()
+            del self.menu_tree[level:]
 
-            return self.parse_entry(lines)
+    def parse_entry(self, m, level):
+        self._process_indent(level)
 
-        raise ValueError(f"unexpected input {line!r}")
+        self.current_action = self.menu_tree[-1].addAction(m["title"])
+        self.current_action.setEnabled(False)
 
-    def parse_cmd_or_entry(self, lines):
-        if not lines:
-            return
+        self.current_action.triggered.connect(
+            lambda _, action=self.current_action: exec_action(action)
+        )
 
-        m = self.icon_regex.fullmatch(lines[0])
-        if m:
+        if m["checkbox"]:
+            self.current_action.setCheckable(True)
+            if m["checkbox"] == "x":
+                self.current_action.setChecked(True)
+
+    def parse_separator(self, m, level):
+        self._process_indent(level)
+
+        self.current_action = None
+        if m["section"]:
+            self.menu_tree[-1].addSection(m["section"])
+        else:
+            self.menu_tree[-1].addSeparator()
+
+    def parse_submenu(self, m, level):
+        self._process_indent(level)
+
+        self.current_action = None
+
+        new = self.menu_tree[-1].addMenu(m["title"])
+        self.menu_tree.append(new)
+
+    def parse_text_attrs(self, m, level):
+        self._check_attr_indent(level)
+
+        if "command" in m.groupdict():
             assert self.current_action is not None
-            self.current_action.setIcon(load_icon(m[1]))
-            return self.parse_cmd_or_entry(lines[1:])
-
-        m = self.command_regex.fullmatch(lines[0])
-        if m:
-            assert self.current_action is not None
+            self.current_action.setEnabled(True)
             self.current_action.setData(m["command"])
-            return self.parse_cmd_or_entry(lines[1:])
 
-        if self.current_action:
-            self.current_action.setEnabled(False)
-        self.parse_entry(lines)
+        elif "icon" in m.groupdict():
+            assert self.current_action is not None
+            self.current_action.setIcon(load_icon(m["icon"]))
+
+        else:
+            raise AssertionError()
+
+    def parse_submenu_attrs(self, m, level):
+        self._check_attr_indent(level)
+
+        assert "icon" in m
+        self.menu_tree[-1].setIcon(load_icon(m["icon"]))
 
 
 def set_menu(reason):
