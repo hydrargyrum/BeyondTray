@@ -210,9 +210,6 @@ def set_menu(reason):
         menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.exit)
 
-    tray.setContextMenu(menu)
-    menu.show()
-
 
 def load_icon(name):
     icon = QIcon.fromTheme(name)
@@ -249,7 +246,18 @@ if __name__ == "__main__":
     tray.activated.connect(set_menu)
 
     menu = QMenu()
+    # XXX this dummy entry is important!
+    # On XFCE at least, if the context menu is empty when assigning it to tray,
+    # right-clicking on the tray will spawn a desktop-environment menu, not ours
+    # and neither QMenu.aboutToShow nor QSystemTrayIcon.activated will be
+    # emitted, so we don't have a chance to populate our menu.
+    # A dummy entry at least gives us the chance to be notified when we should.
+    menu.addAction("dummy")
     tray.setContextMenu(menu)
+
+    # the `activated` signal may not be emitted in case of context menu
+    # aboutToShow seems more reliable.
+    menu.aboutToShow.connect(lambda: set_menu(None))
 
     tray.show()
     app.exec()
