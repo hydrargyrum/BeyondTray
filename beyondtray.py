@@ -233,11 +233,19 @@ def set_menu(reason):
             template = jinja2.Template(menu_description)
             menu_description = template.render(**template_funcs)
 
-    menu.clear()
+    # XXX don't use menu.clear(). On some desktops like fluxbox, it seems the
+    # menu "blinks" if the menu is empty at some point. So we remove old entries
+    # when we added new ones.
+    old_actions = menu.actions()
+
     MenuDescriptionParser(menu).parse(menu_description)
 
     menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.exit)
+
+    for action in old_actions:
+        menu.removeAction(action)
+        action.deleteLater()
 
 
 def load_icon(name):
