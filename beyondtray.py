@@ -2,6 +2,7 @@
 
 import argparse
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -259,7 +260,9 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--icon", default="mail-forward")
+    argparser.add_argument(
+        "--icon", default=str(Path(__file__).with_name("hamburger-menu.png")),
+    )
     argparser.add_argument("--title", default="BeyondTray")
     argparser.add_argument("--command", action="store_true")
     argparser.add_argument("--template", action="store_true")
