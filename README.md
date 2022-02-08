@@ -4,7 +4,7 @@ commandtray COMMAND [ARGS...]
 ```
 
 `commandtray` shows a system tray icon with a dynamic, customizable menu.
-Given this input
+Given [this input](sample1.menu):
 ```
 - The &first menu entry
     xmessage "the first entry was selected"
@@ -29,7 +29,7 @@ Given this input
 
 commandtray will show this menu:
 
-![]()
+![sample menu 1](sample1.png)
 
 The menu is dynamic because a command can be used to generate the input file just when the menu is about to be shown.
 

@@ -1,0 +1,19 @@
+- The &first menu entry
+    xmessage "the first entry was selected"
+- &Another entry
+    echo "the second entry was selected" >> ~/foobar.txt
+- This is a disabled entry (no command associated)
+--------
+- The above dashes are a separator
+- [ ] This is a &checkable entry
+    echo "the checkbox was checked" >> ~/foobar.txt
+- [ ] This is a checkable entry (but it's disabled)
+- [x] This is a checked &entry
+    echo "the checkbox was unchecked" >> ~/foobar.txt
+--------
+> A &sub-menu
+    - an entry in the sub-menu
+        xmessage "submenu was selected"
+-------- This is a separator with a title
+- A last entry that opens &Gitlab.com
+    firefox https://gitlab.com
