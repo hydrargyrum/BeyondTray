@@ -236,8 +236,7 @@ def set_menu(reason):
     menu.clear()
     MenuDescriptionParser(menu).parse(menu_description)
 
-    if not menu.isEmpty():
-        menu.addSeparator()
+    menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.exit)
 
 
