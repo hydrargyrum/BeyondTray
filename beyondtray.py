@@ -253,7 +253,7 @@ if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--icon", default="mail-forward")
-    argparser.add_argument("--title", default="Command Tray")
+    argparser.add_argument("--title", default="BeyondTray")
     argparser.add_argument("--command", action="store_true")
     argparser.add_argument("--template", action="store_true")
     argparser.add_argument("other", nargs="+")
@@ -277,6 +277,7 @@ if __name__ == "__main__":
 
     app.setWindowIcon(icon)
     app.setApplicationDisplayName(args.title)
+    app.setApplicationName("BeyondTray")
 
     tray = QSystemTrayIcon(icon)
     tray.setToolTip(args.title)
