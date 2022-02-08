@@ -258,6 +258,10 @@ def load_icon(name):
 
 
 if __name__ == "__main__":
+    # avoid crashing the whole app on any exception
+    if sys.excepthook is sys.__excepthook__:
+        sys.excepthook = lambda *args: sys.__excepthook__(*args)
+
     app = QApplication(sys.argv)
 
     argparser = argparse.ArgumentParser()
