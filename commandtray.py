@@ -194,6 +194,30 @@ class MenuDescriptionParser:
         self.menu_tree[-1].setIcon(load_icon(m["icon"]))
 
 
+def template_sh(command):
+    # in shell 0 is success, so we map it to True
+    return not subprocess.run(command, shell=True).returncode
+
+
+def template_read(command):
+    output = subprocess.run(
+        command, shell=True, stdout=subprocess.PIPE, encoding="utf8",
+    ).stdout
+
+    # this function is to be called typically from menu entries titles,
+    # not from commands to exec for a triggered entry.
+    # so cleaning whitespace is preferable
+    return ws_regex.sub(" ", output)
+
+
+template_funcs = {
+    "sh": template_sh,
+    "read": template_read,
+    "getenv": os.getenv,
+    "putenv": os.putenv,
+}
+
+
 def set_menu(reason):
     global menu
 
@@ -202,6 +226,12 @@ def set_menu(reason):
     else:
         with open(args.other[0]) as fp:
             menu_description = fp.read()
+
+        if args.template:
+            import jinja2
+
+            template = jinja2.Template(menu_description)
+            menu_description = template.render(**template_funcs)
 
     menu.clear()
     MenuDescriptionParser(menu).parse(menu_description)
@@ -225,11 +255,18 @@ if __name__ == "__main__":
     argparser.add_argument("--icon", default="mail-forward")
     argparser.add_argument("--title", default="Command Tray")
     argparser.add_argument("--command", action="store_true")
+    argparser.add_argument("--template", action="store_true")
     argparser.add_argument("other", nargs="+")
     args = argparser.parse_args(app.arguments()[1:])
 
     if not args.command and len(args.other) > 1:
         argparser.error("only 1 file should be given")
+
+    if args.template:
+        try:
+            import jinja2
+        except ImportError:
+            parser.error("cannot use --template, jinja2 is not installed")
 
     xdg_path = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
     QIcon.setThemeSearchPaths(
