@@ -72,12 +72,16 @@ class MenuDescriptionParser:
         self.menu_tree = [menu]
         self.current_action = None
         self.indent_width = 1
+        self.lineno = 0
 
     def _get_indent(self, line):
         space_match = ws_regex.match(line)
         if space_match:
             return len(space_match[0])
         return 0
+
+    def _error(self, message):
+        raise SyntaxError(f"at line {self.lineno}: {message}")
 
     def parse(self, text):
         first_indent_match = re.search(r"^[ \t]+", text, flags=re.MULTILINE)
@@ -87,13 +91,13 @@ class MenuDescriptionParser:
         lines = text.strip().split("\n")
 
         state = "start"
-        for line in lines:
+        for self.lineno, line in enumerate(lines, 1):
             if not line.strip():
                 continue
 
             indent = self._get_indent(line)
             if indent and indent % self.indent_width != 0:
-                raise SyntaxError(f"indentation should be a multiple of {self.indent_width}")
+                self._error(f"indentation should be a multiple of {self.indent_width}")
             level = indent // self.indent_width
 
             line = line.strip()
@@ -104,22 +108,12 @@ class MenuDescriptionParser:
                     state = new_state
                     getattr(self, f"parse_{state}")(m, level)
                     break
-
-    def _process_indent(self, indent):
-        try:
-            pos = self.indents.index(indent)
-        except ValueError:
-            raise SyntaxError("not properly indented")
-
-        if pos == len(self.indents) - 1:
-            return
-        else:
-            del self.indents[pos + 1:]
-            del self.menu_tree[pos + 1:]
+            else:
+                self._error(f"invalid line: {line}")
 
     def _check_attr_indent(self, level):
         if level != len(self.menu_tree):
-            raise SyntaxError("not indented properly")
+            self._error("not indented properly")
 
     def _process_indent(self, level):
         # len([root]) = 1
@@ -137,7 +131,7 @@ class MenuDescriptionParser:
         level += 1
         max_depth = len(self.menu_tree)
         if level > max_depth:
-            raise SyntaxError("too big indent")
+            self._error("line is indented too much")
         elif level < max_depth:
             self.current_action = None
             del self.menu_tree[level:]
@@ -178,12 +172,14 @@ class MenuDescriptionParser:
         self._check_attr_indent(level)
 
         if "command" in m.groupdict():
-            assert self.current_action is not None
+            if self.current_action is None:
+                self._error(f"unexpected command after non-entry: {m['command']}")
             self.current_action.setEnabled(True)
             self.current_action.setData(m["command"])
 
         elif "icon" in m.groupdict():
-            assert self.current_action is not None
+            if self.current_action is None:
+                self._error(f"unexpected icon after non-entry: {m['icon']}")
             self.current_action.setIcon(load_icon(m["icon"]))
 
         else:
@@ -240,7 +236,20 @@ def set_menu(reason):
     # when we added new ones.
     old_actions = menu.actions()
 
-    MenuDescriptionParser(menu).parse(menu_description)
+    try:
+        MenuDescriptionParser(menu).parse(menu_description)
+    except Exception as exc:
+        print(f"error when parsing the menu: {exc}", file=sys.stderr)
+        print(f"menu description:", file=sys.stderr)
+        print(menu_description, file=sys.stderr)
+
+        tray.showMessage(
+            "BeyondTray cannot parse the menu", str(exc),
+            QSystemTrayIcon.Critical,
+        )
+
+        menu.addSeparator()
+        menu.addAction(f"BeyondTray cannot parse the menu: {exc}").setEnabled(0)
 
     menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.exit)
