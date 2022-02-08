@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 
 
 def exec_action(action):
-    subprocess.run(action.data(), shell=True)
+    subprocess.Popen(action.data(), shell=True)
 
 
 ws_regex = re.compile(r"\s+")
