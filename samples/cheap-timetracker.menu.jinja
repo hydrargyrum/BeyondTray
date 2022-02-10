@@ -1,0 +1,17 @@
+{#
+    this is a very cheap timetracker:
+    single entry that logs current time when clicked
+    along with on/off info
+#}
+
+{%- macro timetrack(name, filename) -%}
+{% if sh("tail -1 %s | grep -q on" % filename) %}
+- [x] Stop {{name}}
+    date +"%FT%T%:z off" >> {{filename}}
+{% else %}
+- [ ] Start {{name}}
+    date +"%FT%T%:z on" >> {{filename}}
+{% endif %}
+{%- endmacro -%}
+
+{{ timetrack("work time", "~/.worklog") }}

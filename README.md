@@ -118,7 +118,7 @@ The indentation can be tabs or spaces, as you wish, but it must be consistent in
 Templating is useful for dynamic content, for example changing the label of an entry, or making a checkbox really dynamic.
 The syntax uses Jinja.
 
-### File: `dynamic.menu`
+### File: `dynamic.menu.jinja`
 ```
 - date is now: {{ read("date '+%Y-%m-%d %T'") }}
 ------
@@ -130,13 +130,13 @@ The syntax uses Jinja.
 {% endif %}
 ```
 
-Run with `beyondtray --template dynamic.menu`.
+Run with `beyondtray --template dynamic.menu.jinja`.
 
 See the [jinja manual](https://jinja.palletsprojects.com/en/3.0.x/templates/) for complete description of templating.
 
 ## Using a command for dynamic content
 
-File: `dynamic.sh`
+### File: `dynamic.sh`
 ```
 #!/bin/sh -e
 

@@ -1,0 +1,8 @@
+- date is now: {{ read("date '+%Y-%m-%d %T'") }}
+------
+{% if sh("pgrep xscreensaver | grep -q .") %}
+- [x] XScreenSaver is running
+{% else %}
+- [ ] XScreenSaver is not running!
+    xscreensaver
+{% endif %}
