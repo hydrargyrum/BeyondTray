@@ -1,0 +1,12 @@
+{#
+    this sample toggles XFCE-notifyd's "do-not-disturb" mode
+    beyondtray --title="Notifications" --template xfce-do-not-disturb-toggle.menu.jinja
+#}
+
+{% if lines("xfconf-query -c xfce4-notifyd -p /do-not-disturb") == ["true"] %}
+- [x] Do not disturb
+	xfconf-query -c xfce4-notifyd -p /do-not-disturb -s false
+{% else %}
+- [ ] Do not disturb
+	xfconf-query -c xfce4-notifyd -p /do-not-disturb -s true
+{% endif %}
