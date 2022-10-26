@@ -197,6 +197,12 @@ def template_sh(command):
     return not subprocess.run(command, shell=True).returncode
 
 
+def template_lines(command):
+    return subprocess.run(
+        command, shell=True, stdout=subprocess.PIPE, encoding="utf8",
+    ).stdout.rstrip().split("\n")
+
+
 def template_read(command):
     output = subprocess.run(
         command, shell=True, stdout=subprocess.PIPE, encoding="utf8",
@@ -211,6 +217,7 @@ def template_read(command):
 template_funcs = {
     "sh": template_sh,
     "read": template_read,
+    "lines": template_lines,
     "getenv": os.getenv,
     "putenv": os.putenv,
 }
