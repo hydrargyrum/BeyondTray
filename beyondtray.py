@@ -299,7 +299,7 @@ def main():
         try:
             import jinja2
         except ImportError:
-            parser.error("cannot use --template, jinja2 is not installed")
+            argparser.error("cannot use --template, jinja2 is not installed")
 
     xdg_path = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
     QIcon.setThemeSearchPaths(
