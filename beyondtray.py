@@ -273,7 +273,9 @@ def load_icon(name):
     return icon
 
 
-if __name__ == "__main__":
+def main():
+    global tray, app, args
+
     # avoid crashing the whole app on any exception
     if sys.excepthook is sys.__excepthook__:
         sys.excepthook = lambda *args: sys.__excepthook__(*args)
@@ -330,3 +332,7 @@ if __name__ == "__main__":
 
     tray.show()
     app.exec()
+
+
+if __name__ == "__main__":
+    main()
