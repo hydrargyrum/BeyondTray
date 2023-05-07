@@ -8,8 +8,8 @@ import re
 import subprocess
 import sys
 
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 
 
 def exec_action(action):
@@ -252,7 +252,7 @@ def set_menu(reason):
 
         tray.showMessage(
             "BeyondTray cannot parse the menu", str(exc),
-            QSystemTrayIcon.Critical,
+            QSystemTrayIcon.MessageIcon.Critical,
         )
 
         menu.addSeparator()
