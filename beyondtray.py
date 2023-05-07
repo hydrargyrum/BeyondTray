@@ -274,7 +274,7 @@ def load_icon(name):
 
 
 def main():
-    global tray, app, args
+    global tray, app, args, menu
 
     # avoid crashing the whole app on any exception
     if sys.excepthook is sys.__excepthook__:
